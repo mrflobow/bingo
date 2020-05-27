@@ -105,7 +105,7 @@ func getPicturesFolder() (string, error) {
 
 	homedir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
 	s = strings.ReplaceAll(s, "%USERPROFILE%", homedir)
