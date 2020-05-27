@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/reujab/wallpaper"
 	"golang.org/x/sys/windows/registry"
@@ -101,6 +102,13 @@ func getPicturesFolder() (string, error) {
 	defer k.Close()
 
 	s, _, err := k.GetStringValue("My Pictures")
+
+	homedir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s = strings.ReplaceAll(s, "%USERPROFILE%", homedir)
 
 	return s, err
 }
