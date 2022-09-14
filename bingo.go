@@ -10,10 +10,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/reujab/wallpaper"
-	"golang.org/x/sys/windows/registry"
 )
 
 type ImageList struct {
@@ -25,6 +24,12 @@ type Image struct {
 }
 
 func main() {
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Environment File couldn't be loaded")
+	}
+
 	bingurl := "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1"
 
 	resp, err := http.Get(bingurl)
@@ -54,15 +59,16 @@ func main() {
 	}
 
 	baseimg := u.Query().Get("id")
-	image := fmt.Sprintf("%s_1920x1080.jpg", baseimg)
-	downloadurl := fmt.Sprintf("http://www.bing.com%s_1920x1080.jpg", iml.Images[0].Urlbase)
+	postfix := "1920x1080"
 
-	picturesFolder, err := getPicturesFolder()
-	if err != nil {
-		log.Fatal(err)
+	if os.Getenv("WALLPAPER_UHD") == "yes" {
+		postfix = "UHD"
 	}
 
-	bingWallperPath := filepath.Join(picturesFolder, "BingWallpaper")
+	image := fmt.Sprintf("%s_%s.jpg", baseimg, postfix)
+	downloadurl := fmt.Sprintf("http://www.bing.com%s_%s.jpg", iml.Images[0].Urlbase, postfix)
+
+	bingWallperPath := os.Getenv("PICTURE_DOWNLOAD_FOLDER")
 	targetPath := filepath.Join(bingWallperPath, image)
 
 	//Ensure Directory exists
@@ -92,25 +98,6 @@ func fileExists(filename string) bool {
 		return false
 	}
 	return !info.IsDir()
-}
-
-func getPicturesFolder() (string, error) {
-	k, err := registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders`, registry.QUERY_VALUE)
-	if err != nil {
-		return "", err
-	}
-	defer k.Close()
-
-	s, _, err := k.GetStringValue("My Pictures")
-
-	homedir, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-
-	s = strings.ReplaceAll(s, "%USERPROFILE%", homedir)
-
-	return s, err
 }
 
 func downloadWallpaper(url string, target string) error {
