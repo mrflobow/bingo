@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,9 +10,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
+	"runtime"
 
-	"github.com/joho/godotenv"
 	"github.com/reujab/wallpaper"
 )
 
@@ -23,11 +25,82 @@ type Image struct {
 	Urlbase string
 }
 
+type bingoConfig struct {
+	pictureDownloadPath string
+	uhd                 bool
+}
+
+func NewBingoConfig() *bingoConfig {
+	c := bingoConfig{"", true}
+	return &c
+}
+
+func (p *bingoConfig) loadConfig() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	cos := runtime.GOOS
+
+	switch cos {
+	case "windows":
+		p.pictureDownloadPath = path.Join(home, "Pictures", "Bing")
+	case "darwin":
+		p.pictureDownloadPath = path.Join(home, "Pictures", "Bing")
+	default:
+	}
+
+	return nil
+}
+
+func (p *bingoConfig) createDirectories() error {
+	if err := os.MkdirAll(p.pictureDownloadPath, os.ModePerm); err != nil {
+		return err
+	}
+	return nil
+}
+
+func downloadWallpaper(url string, target string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	out, err := os.Create(target)
+	if err != nil {
+		return err
+	}
+
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
 func main() {
 
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Environment File couldn't be loaded")
+	useUHD := flag.Bool("uhd", true, "Use UHD Wallpaper?")
+	flag.Parse()
+
+	confPtr := NewBingoConfig()
+	if err := confPtr.loadConfig(); err != nil {
+		log.Fatal("Error Loading configuration")
+	}
+	confPtr.uhd = *useUHD
+
+	if err := confPtr.createDirectories(); err != nil {
+		log.Fatal("Error creating directories")
 	}
 
 	bingurl := "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1"
@@ -59,22 +132,18 @@ func main() {
 	}
 
 	baseimg := u.Query().Get("id")
-	postfix := "1920x1080"
+	var postfix string
 
-	if os.Getenv("WALLPAPER_UHD") == "yes" {
+	if confPtr.uhd {
 		postfix = "UHD"
+	} else {
+		postfix = "1920x1080"
 	}
 
 	image := fmt.Sprintf("%s_%s.jpg", baseimg, postfix)
 	downloadurl := fmt.Sprintf("http://www.bing.com%s_%s.jpg", iml.Images[0].Urlbase, postfix)
 
-	bingWallperPath := os.Getenv("PICTURE_DOWNLOAD_FOLDER")
-	targetPath := filepath.Join(bingWallperPath, image)
-
-	//Ensure Directory exists
-	if err = os.MkdirAll(bingWallperPath, os.ModePerm); err != nil {
-		log.Fatal(err)
-	}
+	targetPath := filepath.Join(confPtr.pictureDownloadPath, image)
 
 	//Check if file doesn't exist
 	if fileExists(targetPath) {
@@ -90,31 +159,4 @@ func main() {
 	fmt.Println(downloadurl)
 	fmt.Println(baseimg)
 
-}
-
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return !info.IsDir()
-}
-
-func downloadWallpaper(url string, target string) error {
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	out, err := os.Create(target)
-	if err != nil {
-		return err
-	}
-
-	defer out.Close()
-
-	_, err = io.Copy(out, resp.Body)
-	return err
 }
