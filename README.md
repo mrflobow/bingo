@@ -1,4 +1,4 @@
-# bingo
+# Bingo
 Picture of the day from bing 
 
 ## Command Line Parameters

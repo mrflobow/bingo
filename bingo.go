@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -111,7 +110,7 @@ func main() {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal("Bing Response empty")
 	}
@@ -144,7 +143,7 @@ func main() {
 	downloadurl := fmt.Sprintf("http://www.bing.com%s_%s.jpg", iml.Images[0].Urlbase, postfix)
 
 	targetPath := filepath.Join(confPtr.pictureDownloadPath, image)
-
+	fmt.Println(targetPath)
 	//Check if file doesn't exist
 	if fileExists(targetPath) {
 		fmt.Printf("Image %s", image)
@@ -154,9 +153,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		wallpaper.SetFromFile(targetPath)
-	}
-	fmt.Println(downloadurl)
-	fmt.Println(baseimg)
 
+	}
+	wallpaper.SetFromFile(targetPath)
+	fmt.Println("Image set as wallpaper")
 }
